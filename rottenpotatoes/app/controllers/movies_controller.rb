@@ -1,7 +1,7 @@
 class MoviesController < ApplicationController
   
   def movie_params
-    params.require(:movie).permit(:title, :rating, :description, :release_date)
+    params.require(:movie).permit(:title, :rating, :description, :release_date, :director)
   end
 
   def show
@@ -25,16 +25,36 @@ class MoviesController < ApplicationController
       @selected_ratings = Hash[@all_ratings.map {|rating| [rating, rating]}]
     end
     
+    if params[:id]
+      @movie = Movie.find(params[:id])
+      @movies = @movie.find_director_movies()
+      return
+    end
     if params[:sort] != session[:sort] or params[:ratings] != session[:ratings]
       session[:sort] = sort
       session[:ratings] = @selected_ratings
       redirect_to :sort => sort, :ratings => @selected_ratings and return
     end
+  
     @movies = Movie.where(rating: @selected_ratings.keys).order(ordering)
   end
 
   def new
     # default: render 'new' template
+  end
+  
+  def find_director_movies
+    movie = Movie.find params[:id]
+    if movie.director.nil? or movie.director == ''
+      flash[:warning] = "'#{movie.title}' has no director info"
+      redirect_to movies_path
+    else
+      @movies = movie.find_director_movies
+      @all_ratings = Movie.all_ratings
+      @selected_ratings = @all_ratings
+      render 'index'
+    end
+    
   end
 
   def create
